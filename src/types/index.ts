@@ -78,4 +78,15 @@ export interface QuickAction {
   color: string;
 }
 
+export interface ScanRecord {
+  id: string;
+  userId: string;
+  merchant: string;
+  category: string;
+  scanTime: string;
+  amount: number;
+  insuranceCoverage: number;
+  selfPayment: number;
+}
+
 export type StatusType = PaymentOrder['status'] | ServiceApplication['status'];
