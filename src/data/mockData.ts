@@ -1,4 +1,4 @@
-import type { User, InsuranceAccount, Transaction, PaymentOrder, ServiceApplication, InsuranceService, QuickAction } from '@/types';
+import type { User, InsuranceAccount, Transaction, PaymentOrder, ServiceApplication, InsuranceService, QuickAction, ScanRecord } from '@/types';
 import type { Notification, InsurancePolicy } from '@/store/useStore';
 
 export const mockUser: User = {
@@ -389,6 +389,69 @@ export const mockNotifications: Notification[] = [
     read: true,
     date: '2026-05-22 09:00:00',
     type: 'system',
+  },
+];
+
+export const mockScanRecords: ScanRecord[] = [
+  {
+    id: 'scan001',
+    userId: 'user001',
+    merchant: '上海市第一人民医院',
+    category: '门诊',
+    scanTime: '2026-05-20 14:30:00',
+    amount: 256.80,
+    insuranceCoverage: 205.44,
+    selfPayment: 51.36,
+  },
+  {
+    id: 'scan002',
+    userId: 'user001',
+    merchant: '益丰大药房',
+    category: '购药',
+    scanTime: '2026-05-10 09:15:00',
+    amount: 89.50,
+    insuranceCoverage: 71.60,
+    selfPayment: 17.90,
+  },
+  {
+    id: 'scan003',
+    userId: 'user001',
+    merchant: '上海瑞慈体检中心',
+    category: '体检',
+    scanTime: '2026-05-05 10:00:00',
+    amount: 520.00,
+    insuranceCoverage: 416.00,
+    selfPayment: 104.00,
+  },
+  {
+    id: 'scan004',
+    userId: 'user001',
+    merchant: '复旦大学附属中山医院',
+    category: '门诊',
+    scanTime: '2026-04-28 15:45:00',
+    amount: 156.30,
+    insuranceCoverage: 125.04,
+    selfPayment: 31.26,
+  },
+  {
+    id: 'scan005',
+    userId: 'user001',
+    merchant: '老百姓大药房',
+    category: '购药',
+    scanTime: '2026-04-10 16:20:00',
+    amount: 45.20,
+    insuranceCoverage: 36.16,
+    selfPayment: 9.04,
+  },
+  {
+    id: 'scan006',
+    userId: 'user001',
+    merchant: '上海市第六人民医院',
+    category: '住院',
+    scanTime: '2026-03-20 11:30:00',
+    amount: 1280.00,
+    insuranceCoverage: 1024.00,
+    selfPayment: 256.00,
   },
 ];
 

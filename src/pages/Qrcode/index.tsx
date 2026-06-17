@@ -1,16 +1,23 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
-import { QrCode, Barcode, RefreshCw, Shield, Info, Clock, Eye, EyeOff, Copy, Check, AlertTriangle } from 'lucide-react';
+import { QrCode, Barcode, RefreshCw, Shield, Info, Clock, Eye, EyeOff, Copy, Check, AlertTriangle, History } from 'lucide-react';
 import { useStore } from '@/store/useStore';
+import { useScreenshotDetection } from '@/hooks/useScreenshotDetection';
+import ScreenshotAlert from '@/components/Qrcode/ScreenshotAlert';
+import ScanRecordList from '@/components/Qrcode/ScanRecordList';
+import PauseControl from '@/components/Qrcode/PauseControl';
+import FrozenOverlay from '@/components/Qrcode/FrozenOverlay';
 
 type QrMode = 'qr' | 'barcode';
 
 export default function Qrcode() {
-  const { user, insuranceAccount } = useStore();
+  const { user, insuranceAccount, scanRecords, isQrPaused, toggleQrPause } = useStore();
+  const { isScreenshotDetected, dismissAlert } = useScreenshotDetection();
   const [mode, setMode] = useState<QrMode>('qr');
   const [countdown, setCountdown] = useState(60);
   const [copied, setCopied] = useState(false);
   const [showCode, setShowCode] = useState(true);
+  const [showRecords, setShowRecords] = useState(false);
 
   const generateQrValue = useCallback(() => {
     const timestamp = Date.now();
@@ -34,6 +41,7 @@ export default function Qrcode() {
   }, [qrValue]);
 
   useEffect(() => {
+    if (isQrPaused) return;
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
@@ -44,7 +52,7 @@ export default function Qrcode() {
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [generateQrValue]);
+  }, [generateQrValue, isQrPaused]);
 
   const handleRefresh = () => {
     setQrValue(generateQrValue());
@@ -65,6 +73,8 @@ export default function Qrcode() {
 
   return (
     <div className="max-w-lg mx-auto space-y-4 sm:space-y-6 px-2 sm:px-0">
+      <ScreenshotAlert visible={isScreenshotDetected} onDismiss={dismissAlert} />
+
       <div className="text-center mb-6 sm:mb-8">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">医保电子凭证</h1>
         <p className="text-gray-500 text-sm">刷码即可享受医保服务</p>
@@ -117,14 +127,15 @@ export default function Qrcode() {
           </div>
 
           {showCode ? (
-            <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 flex flex-col items-center">
+            <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 flex flex-col items-center relative">
+              {isQrPaused && <FrozenOverlay />}
               {mode === 'qr' ? (
                 <QRCodeCanvas
                   value={qrValue}
                   size={200}
                   level="H"
                   includeMargin={false}
-                  fgColor="#1A73E8"
+                  fgColor={isQrPaused ? '#D1D5DB' : '#1A73E8'}
                 />
               ) : (
                 <div className="w-full h-28 sm:h-32 bg-gray-900 rounded-xl flex items-center justify-center px-3 sm:px-4">
@@ -132,7 +143,7 @@ export default function Qrcode() {
                     {barcodeBars.map((bar, i) => (
                       <div
                         key={i}
-                        className="bg-white"
+                        className={isQrPaused ? 'bg-gray-500' : 'bg-white'}
                         style={{
                           width: `${bar.width}px`,
                           height: `${bar.height}%`,
@@ -143,20 +154,24 @@ export default function Qrcode() {
                 </div>
               )}
               
-              <div className="flex items-center gap-2 mt-3 sm:mt-4 text-gray-500">
-                <Clock size={12} className="sm:w-[14px] sm:h-[14px]" />
-                <span className="text-xs sm:text-sm">
-                  码将在 <span className="text-insurance-blue-600 font-bold">{countdown}s</span> 后刷新
-                </span>
-              </div>
+              {!isQrPaused && (
+                <>
+                  <div className="flex items-center gap-2 mt-3 sm:mt-4 text-gray-500">
+                    <Clock size={12} className="sm:w-[14px] sm:h-[14px]" />
+                    <span className="text-xs sm:text-sm">
+                      码将在 <span className="text-insurance-blue-600 font-bold">{countdown}s</span> 后刷新
+                    </span>
+                  </div>
 
-              <button
-                onClick={handleRefresh}
-                className="mt-2 sm:mt-3 flex items-center gap-1 text-insurance-blue-500 hover:text-insurance-blue-600 text-xs sm:text-sm font-medium transition-colors"
-              >
-                <RefreshCw size={12} className="sm:w-[14px] sm:h-[14px]" />
-                立即刷新
-              </button>
+                  <button
+                    onClick={handleRefresh}
+                    className="mt-2 sm:mt-3 flex items-center gap-1 text-insurance-blue-500 hover:text-insurance-blue-600 text-xs sm:text-sm font-medium transition-colors"
+                  >
+                    <RefreshCw size={12} className="sm:w-[14px] sm:h-[14px]" />
+                    立即刷新
+                  </button>
+                </>
+              )}
             </div>
           ) : (
             <div className="bg-white/10 backdrop-blur rounded-xl sm:rounded-2xl p-8 sm:p-12 flex flex-col items-center justify-center">
@@ -179,6 +194,8 @@ export default function Qrcode() {
           </div>
         </div>
       </div>
+
+      <PauseControl isPaused={isQrPaused} onTogglePause={toggleQrPause} />
 
       <div className="card p-4">
         <div className="flex items-start gap-3">
@@ -214,6 +231,25 @@ export default function Qrcode() {
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="space-y-4">
+        <button
+          onClick={() => setShowRecords(!showRecords)}
+          className="w-full flex items-center justify-between"
+        >
+          <div className="flex items-center gap-2">
+            <History size={18} className="text-insurance-blue-500" />
+            <h3 className="font-bold text-gray-900">刷码记录</h3>
+            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+              {scanRecords.length} 条
+            </span>
+          </div>
+          <span className="text-xs text-insurance-blue-500">
+            {showRecords ? '收起' : '查看全部'}
+          </span>
+        </button>
+        {showRecords && <ScanRecordList records={scanRecords} />}
       </div>
 
       <div className="card p-6 bg-gradient-to-br from-insurance-blue-50 to-insurance-green-50">
