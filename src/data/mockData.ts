@@ -1,4 +1,4 @@
-import type { User, InsuranceAccount, Transaction, PaymentOrder, ServiceApplication, InsuranceService, QuickAction } from '@/types';
+import type { User, InsuranceAccount, Transaction, PaymentOrder, ServiceApplication, InsuranceService, QuickAction, QrCodeRecord, QrCodeState } from '@/types';
 import type { Notification, InsurancePolicy } from '@/store/useStore';
 
 export const mockUser: User = {
@@ -424,3 +424,70 @@ export const mockInsurancePolicies: InsurancePolicy[] = [
     premium: 300,
   },
 ];
+
+export const mockQrCodeRecords: QrCodeRecord[] = [
+  {
+    id: 'qr001',
+    userId: 'user001',
+    type: 'payment',
+    amount: 256.8,
+    merchant: '上海市第一人民医院',
+    scanTime: '2026-05-20 14:30:00',
+    status: 'success',
+    location: '上海市虹口区',
+  },
+  {
+    id: 'qr002',
+    userId: 'user001',
+    type: 'payment',
+    amount: 89.5,
+    merchant: '益丰大药房',
+    scanTime: '2026-05-10 09:15:00',
+    status: 'success',
+    location: '上海市浦东新区',
+  },
+  {
+    id: 'qr003',
+    userId: 'user001',
+    type: 'identity',
+    merchant: '上海市医保中心',
+    scanTime: '2026-05-08 10:30:00',
+    status: 'success',
+    location: '上海市黄浦区',
+  },
+  {
+    id: 'qr004',
+    userId: 'user001',
+    type: 'payment',
+    amount: 520.0,
+    merchant: '上海瑞慈体检中心',
+    scanTime: '2026-05-05 10:00:00',
+    status: 'success',
+    location: '上海市徐汇区',
+  },
+  {
+    id: 'qr005',
+    userId: 'user001',
+    type: 'registration',
+    merchant: '复旦大学附属中山医院',
+    scanTime: '2026-04-28 15:45:00',
+    status: 'success',
+    location: '上海市徐汇区',
+  },
+  {
+    id: 'qr006',
+    userId: 'user001',
+    type: 'payment',
+    amount: 1280.0,
+    merchant: '上海市第六人民医院',
+    scanTime: '2026-03-20 11:30:00',
+    status: 'success',
+    location: '上海市长宁区',
+  },
+];
+
+export const mockQrCodeState: QrCodeState = {
+  status: 'active',
+  lastRefreshTime: '2026-05-20 14:30:00',
+  totalScanCount: 128,
+};
