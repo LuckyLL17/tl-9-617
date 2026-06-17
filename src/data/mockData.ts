@@ -1,4 +1,4 @@
-import type { User, InsuranceAccount, Transaction, PaymentOrder, ServiceApplication, InsuranceService, QuickAction } from '@/types';
+import type { User, InsuranceAccount, Transaction, PaymentOrder, ServiceApplication, InsuranceService, QuickAction, CodeScanRecord } from '@/types';
 import type { Notification, InsurancePolicy } from '@/store/useStore';
 
 export const mockUser: User = {
@@ -422,5 +422,58 @@ export const mockInsurancePolicies: InsurancePolicy[] = [
     expiryDate: '2023-12-31',
     status: 'expired',
     premium: 300,
+  },
+];
+
+export const mockCodeScanRecords: CodeScanRecord[] = [
+  {
+    id: 'scan001',
+    accountId: 'acc001',
+    merchant: '上海市第一人民医院',
+    amount: 256.80,
+    type: 'payment',
+    status: 'success',
+    scanTime: '2026-05-20 14:30:00',
+    location: '上海市',
+  },
+  {
+    id: 'scan002',
+    accountId: 'acc001',
+    merchant: '益丰大药房',
+    amount: 89.50,
+    type: 'payment',
+    status: 'success',
+    scanTime: '2026-05-10 09:15:00',
+    location: '上海市浦东新区',
+  },
+  {
+    id: 'scan003',
+    accountId: 'acc001',
+    merchant: '上海瑞慈体检中心',
+    amount: 520.00,
+    type: 'payment',
+    status: 'success',
+    scanTime: '2026-05-05 10:00:00',
+    location: '上海市徐汇区',
+  },
+  {
+    id: 'scan004',
+    accountId: 'acc001',
+    merchant: '复旦大学附属中山医院',
+    amount: 156.30,
+    type: 'payment',
+    status: 'success',
+    scanTime: '2026-04-28 15:45:00',
+    location: '上海市徐汇区',
+  },
+  {
+    id: 'scan005',
+    accountId: 'acc001',
+    merchant: '上海市第六人民医院',
+    amount: 1280.00,
+    type: 'payment',
+    status: 'success',
+    scanTime: '2026-03-20 11:30:00',
+    location: '上海市徐汇区',
   },
 ];
