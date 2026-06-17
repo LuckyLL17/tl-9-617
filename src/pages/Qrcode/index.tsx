@@ -1,16 +1,41 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
-import { QrCode, Barcode, RefreshCw, Shield, Info, Clock, Eye, EyeOff, Copy, Check, AlertTriangle } from 'lucide-react';
+import {
+  QrCode,
+  Barcode,
+  RefreshCw,
+  Shield,
+  Info,
+  Clock,
+  Eye,
+  EyeOff,
+  Copy,
+  Check,
+  AlertTriangle,
+  Settings,
+} from 'lucide-react';
 import { useStore } from '@/store/useStore';
+import { useScreenshotDetection } from '@/hooks/useScreenshotDetection';
+import ScanHistory from '@/components/Qrcode/ScanHistory';
+import SuspendDialog from '@/components/Qrcode/SuspendDialog';
+import ScreenshotWarning from '@/components/Qrcode/ScreenshotWarning';
+import QrCodeStatusDisplay from '@/components/Qrcode/QrCodeStatusDisplay';
+import { getQrStatusText, getQrStatusColor } from '@/utils/format';
+import { cn } from '@/lib/utils';
 
 type QrMode = 'qr' | 'barcode';
 
 export default function Qrcode() {
-  const { user, insuranceAccount } = useStore();
+  const { user, insuranceAccount, scanRecords, qrCodeStatus, setQrCodeStatus } = useStore();
   const [mode, setMode] = useState<QrMode>('qr');
   const [countdown, setCountdown] = useState(60);
   const [copied, setCopied] = useState(false);
   const [showCode, setShowCode] = useState(true);
+  const [showSuspendDialog, setShowSuspendDialog] = useState(false);
+
+  const { showWarning, dismissWarning } = useScreenshotDetection({
+    enabled: qrCodeStatus === 'active',
+  });
 
   const generateQrValue = useCallback(() => {
     const timestamp = Date.now();
@@ -34,6 +59,8 @@ export default function Qrcode() {
   }, [qrValue]);
 
   useEffect(() => {
+    if (qrCodeStatus !== 'active') return;
+
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
@@ -44,7 +71,7 @@ export default function Qrcode() {
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [generateQrValue]);
+  }, [generateQrValue, qrCodeStatus]);
 
   const handleRefresh = () => {
     setQrValue(generateQrValue());
@@ -57,142 +84,210 @@ export default function Qrcode() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleSuspendConfirm = (status: typeof qrCodeStatus) => {
+    setQrCodeStatus(status);
+  };
+
+  const handleActivate = () => {
+    setShowSuspendDialog(true);
+  };
+
   const usageTips = [
     { id: 1, title: '医保支付', desc: '在定点医院、药店出示此码即可支付' },
     { id: 2, title: '身份凭证', desc: '可作为医保业务办理的身份凭证' },
     { id: 3, title: '就诊登记', desc: '挂号、就诊、取药时出示即可' },
   ];
 
-  return (
-    <div className="max-w-lg mx-auto space-y-4 sm:space-y-6 px-2 sm:px-0">
-      <div className="text-center mb-6 sm:mb-8">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">医保电子凭证</h1>
-        <p className="text-gray-500 text-sm">刷码即可享受医保服务</p>
-      </div>
+  const renderQrCodeCard = () => (
+    <div className="gradient-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 text-white relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-24 h-24 sm:w-32 sm:h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+      <div className="absolute bottom-0 left-0 w-20 h-20 sm:w-24 sm:h-24 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2" />
 
-      <div className="gradient-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 text-white relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-24 h-24 sm:w-32 sm:h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
-        <div className="absolute bottom-0 left-0 w-20 h-20 sm:w-24 sm:h-24 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2"></div>
-
-        <div className="relative z-10">
-          <div className="flex items-center justify-between mb-4 sm:mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/20 flex items-center justify-center">
-                <Shield size={20} className="sm:w-6 sm:h-6" />
-              </div>
-              <div>
-                <p className="text-white/70 text-xs sm:text-sm">参保人</p>
-                <p className="font-bold text-base sm:text-lg">{user.name}</p>
-              </div>
+      <div className="relative z-10">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <Shield size={20} className="sm:w-6 sm:h-6" />
             </div>
+            <div>
+              <p className="text-white/70 text-xs sm:text-sm">参保人</p>
+              <p className="font-bold text-base sm:text-lg">{user.name}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
+                getQrStatusColor(qrCodeStatus)
+              )}
+            >
+              {getQrStatusText(qrCodeStatus)}
+            </span>
+            <button
+              onClick={() => setShowSuspendDialog(true)}
+              className="p-2 bg-white/10 hover:bg-white/20 rounded-xl transition-colors"
+              title="二维码管理"
+            >
+              <Settings size={18} className="sm:w-5 sm:h-5" />
+            </button>
             <button
               onClick={() => setShowCode(!showCode)}
               className="p-2 bg-white/10 hover:bg-white/20 rounded-xl transition-colors"
             >
-              {showCode ? <Eye size={18} className="sm:w-5 sm:h-5" /> : <EyeOff size={18} className="sm:w-5 sm:h-5" />}
+              {showCode ? (
+                <Eye size={18} className="sm:w-5 sm:h-5" />
+              ) : (
+                <EyeOff size={18} className="sm:w-5 sm:h-5" />
+              )}
             </button>
           </div>
+        </div>
 
-          <div className="flex justify-center mb-4">
-            <div className="flex bg-white/10 rounded-xl p-1">
-              <button
-                onClick={() => setMode('qr')}
-                className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-                  mode === 'qr' ? 'bg-white text-insurance-blue-600' : 'text-white/80'
-                }`}
-              >
-                <QrCode size={16} className="sm:w-[18px] sm:h-[18px]" />
-                二维码
-              </button>
-              <button
-                onClick={() => setMode('barcode')}
-                className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-                  mode === 'barcode' ? 'bg-white text-insurance-blue-600' : 'text-white/80'
-                }`}
-              >
-                <Barcode size={16} className="sm:w-[18px] sm:h-[18px]" />
-                条形码
-              </button>
-            </div>
-          </div>
-
-          {showCode ? (
-            <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 flex flex-col items-center">
-              {mode === 'qr' ? (
-                <QRCodeCanvas
-                  value={qrValue}
-                  size={200}
-                  level="H"
-                  includeMargin={false}
-                  fgColor="#1A73E8"
-                />
-              ) : (
-                <div className="w-full h-28 sm:h-32 bg-gray-900 rounded-xl flex items-center justify-center px-3 sm:px-4">
-                  <div className="flex gap-0.5 h-20 sm:h-24 items-end">
-                    {barcodeBars.map((bar, i) => (
-                      <div
-                        key={i}
-                        className="bg-white"
-                        style={{
-                          width: `${bar.width}px`,
-                          height: `${bar.height}%`,
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              <div className="flex items-center gap-2 mt-3 sm:mt-4 text-gray-500">
-                <Clock size={12} className="sm:w-[14px] sm:h-[14px]" />
-                <span className="text-xs sm:text-sm">
-                  码将在 <span className="text-insurance-blue-600 font-bold">{countdown}s</span> 后刷新
-                </span>
-              </div>
-
-              <button
-                onClick={handleRefresh}
-                className="mt-2 sm:mt-3 flex items-center gap-1 text-insurance-blue-500 hover:text-insurance-blue-600 text-xs sm:text-sm font-medium transition-colors"
-              >
-                <RefreshCw size={12} className="sm:w-[14px] sm:h-[14px]" />
-                立即刷新
-              </button>
-            </div>
-          ) : (
-            <div className="bg-white/10 backdrop-blur rounded-xl sm:rounded-2xl p-8 sm:p-12 flex flex-col items-center justify-center">
-              <EyeOff size={36} className="sm:w-12 sm:h-12 text-white/50 mb-3 sm:mb-4" />
-              <p className="text-white/70 text-center text-sm">点击上方眼睛图标查看二维码</p>
-            </div>
-          )}
-
-          <div className="mt-3 sm:mt-4 flex items-center justify-center gap-2 sm:gap-4 text-xs sm:text-sm">
-            <div className="flex items-center gap-2">
-              <span className="text-white/70">医保卡号：</span>
-              <button
-                onClick={handleCopyCode}
-                className="flex items-center gap-1 font-mono hover:text-white transition-colors text-[10px] sm:text-sm"
-              >
-                <span>{user.id}</span>
-                {copied ? <Check size={12} className="sm:w-[14px] sm:h-[14px] text-green-400" /> : <Copy size={12} className="sm:w-[14px] sm:h-[14px]" />}
-              </button>
-            </div>
+        <div className="flex justify-center mb-4">
+          <div className="flex bg-white/10 rounded-xl p-1">
+            <button
+              onClick={() => setMode('qr')}
+              className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                mode === 'qr'
+                  ? 'bg-white text-insurance-blue-600'
+                  : 'text-white/80'
+              }`}
+            >
+              <QrCode size={16} className="sm:w-[18px] sm:h-[18px]" />
+              二维码
+            </button>
+            <button
+              onClick={() => setMode('barcode')}
+              className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                mode === 'barcode'
+                  ? 'bg-white text-insurance-blue-600'
+                  : 'text-white/80'
+              }`}
+            >
+              <Barcode size={16} className="sm:w-[18px] sm:h-[18px]" />
+              条形码
+            </button>
           </div>
         </div>
-      </div>
 
-      <div className="card p-4">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-insurance-orange-50 flex items-center justify-center flex-shrink-0">
-            <AlertTriangle size={20} className="text-insurance-orange-500" />
+        {showCode ? (
+          <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 flex flex-col items-center">
+            {mode === 'qr' ? (
+              <QRCodeCanvas
+                value={qrValue}
+                size={200}
+                level="H"
+                includeMargin={false}
+                fgColor="#1A73E8"
+              />
+            ) : (
+              <div className="w-full h-28 sm:h-32 bg-gray-900 rounded-xl flex items-center justify-center px-3 sm:px-4">
+                <div className="flex gap-0.5 h-20 sm:h-24 items-end">
+                  {barcodeBars.map((bar, i) => (
+                    <div
+                      key={i}
+                      className="bg-white"
+                      style={{
+                        width: `${bar.width}px`,
+                        height: `${bar.height}%`,
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 mt-3 sm:mt-4 text-gray-500">
+              <Clock size={12} className="sm:w-[14px] sm:h-[14px]" />
+              <span className="text-xs sm:text-sm">
+                码将在{' '}
+                <span className="text-insurance-blue-600 font-bold">
+                  {countdown}s
+                </span>{' '}
+                后刷新
+              </span>
+            </div>
+
+            <button
+              onClick={handleRefresh}
+              className="mt-2 sm:mt-3 flex items-center gap-1 text-insurance-blue-500 hover:text-insurance-blue-600 text-xs sm:text-sm font-medium transition-colors"
+            >
+              <RefreshCw size={12} className="sm:w-[14px] sm:h-[14px]" />
+              立即刷新
+            </button>
           </div>
-          <div>
-            <h4 className="font-medium text-gray-900 mb-1">安全提示</h4>
-            <p className="text-sm text-gray-500">
-              请勿将二维码截图或分享给他人，每次使用后请及时关闭页面。如发现异常请立即联系医保服务热线 12393。
+        ) : (
+          <div className="bg-white/10 backdrop-blur rounded-xl sm:rounded-2xl p-8 sm:p-12 flex flex-col items-center justify-center">
+            <EyeOff
+              size={36}
+              className="sm:w-12 sm:h-12 text-white/50 mb-3 sm:mb-4"
+            />
+            <p className="text-white/70 text-center text-sm">
+              点击上方眼睛图标查看二维码
             </p>
           </div>
+        )}
+
+        <div className="mt-3 sm:mt-4 flex items-center justify-center gap-2 sm:gap-4 text-xs sm:text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-white/70">医保卡号：</span>
+            <button
+              onClick={handleCopyCode}
+              className="flex items-center gap-1 font-mono hover:text-white transition-colors text-[10px] sm:text-sm"
+            >
+              <span>{user.id}</span>
+              {copied ? (
+                <Check
+                  size={12}
+                  className="sm:w-[14px] sm:h-[14px] text-green-400"
+                />
+              ) : (
+                <Copy size={12} className="sm:w-[14px] sm:h-[14px]" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
+    </div>
+  );
+
+  return (
+    <div className="max-w-lg mx-auto space-y-4 sm:space-y-6 px-2 sm:px-0">
+      <ScreenshotWarning isVisible={showWarning} onDismiss={dismissWarning} />
+
+      <div className="text-center mb-6 sm:mb-8">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+          医保电子凭证
+        </h1>
+        <p className="text-gray-500 text-sm">刷码即可享受医保服务</p>
+      </div>
+
+      {qrCodeStatus === 'active' ? (
+        renderQrCodeCard()
+      ) : (
+        <QrCodeStatusDisplay
+          status={qrCodeStatus}
+          onActivate={handleActivate}
+        />
+      )}
+
+      {qrCodeStatus === 'active' && (
+        <div className="card p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-insurance-orange-50 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle size={20} className="text-insurance-orange-500" />
+            </div>
+            <div>
+              <h4 className="font-medium text-gray-900 mb-1">安全提示</h4>
+              <p className="text-sm text-gray-500">
+                请勿将二维码截图或分享给他人，每次使用后请及时关闭页面。如发现异常请立即联系医保服务热线 12393。
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ScanHistory records={scanRecords} />
 
       <div className="space-y-4">
         <div className="flex items-center gap-2">
@@ -204,7 +299,9 @@ export default function Qrcode() {
             <div key={tip.id} className="card card-hover p-4">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-xl bg-insurance-blue-50 flex items-center justify-center flex-shrink-0">
-                  <span className="text-insurance-blue-500 font-bold">{tip.id}</span>
+                  <span className="text-insurance-blue-500 font-bold">
+                    {tip.id}
+                  </span>
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900">{tip.title}</h4>
@@ -237,6 +334,13 @@ export default function Qrcode() {
           </div>
         </div>
       </div>
+
+      <SuspendDialog
+        isOpen={showSuspendDialog}
+        onClose={() => setShowSuspendDialog(false)}
+        currentStatus={qrCodeStatus}
+        onConfirm={handleSuspendConfirm}
+      />
     </div>
   );
 }

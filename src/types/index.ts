@@ -79,3 +79,16 @@ export interface QuickAction {
 }
 
 export type StatusType = PaymentOrder['status'] | ServiceApplication['status'];
+
+export interface ScanRecord {
+  id: string;
+  accountId: string;
+  merchant: string;
+  amount: number;
+  type: 'payment' | 'identity' | 'registration';
+  status: 'success' | 'failed';
+  scanTime: string;
+  location: string;
+}
+
+export type QrCodeStatus = 'active' | 'suspended' | 'lost';

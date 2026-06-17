@@ -99,3 +99,39 @@ export const getTransactionTypeText = (type: string): string => {
 export const getTransactionTypeColor = (type: string): string => {
   return type === 'income' ? 'text-insurance-green-600' : 'text-red-600';
 };
+
+export const getScanTypeText = (type: string): string => {
+  const typeMap: Record<string, string> = {
+    payment: '医保支付',
+    identity: '身份核验',
+    registration: '挂号登记',
+  };
+  return typeMap[type] || type;
+};
+
+export const getScanTypeColor = (type: string): string => {
+  const colorMap: Record<string, string> = {
+    payment: 'bg-insurance-blue-100 text-insurance-blue-700',
+    identity: 'bg-insurance-green-100 text-insurance-green-700',
+    registration: 'bg-insurance-orange-100 text-insurance-orange-700',
+  };
+  return colorMap[type] || 'bg-gray-100 text-gray-700';
+};
+
+export const getQrStatusText = (status: string): string => {
+  const statusMap: Record<string, string> = {
+    active: '正常使用',
+    suspended: '暂停使用',
+    lost: '已挂失',
+  };
+  return statusMap[status] || status;
+};
+
+export const getQrStatusColor = (status: string): string => {
+  const colorMap: Record<string, string> = {
+    active: 'bg-green-100 text-green-700',
+    suspended: 'bg-yellow-100 text-yellow-700',
+    lost: 'bg-red-100 text-red-700',
+  };
+  return colorMap[status] || 'bg-gray-100 text-gray-700';
+};
