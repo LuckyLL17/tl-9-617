@@ -1,16 +1,30 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
-import { QrCode, Barcode, RefreshCw, Shield, Info, Clock, Eye, EyeOff, Copy, Check, AlertTriangle } from 'lucide-react';
+import { QrCode, Barcode, RefreshCw, Shield, Info, Clock, Eye, EyeOff, Copy, Check, AlertTriangle, History, Settings } from 'lucide-react';
 import { useStore } from '@/store/useStore';
+import { useScreenshotDetection } from '@/hooks/useScreenshotDetection';
+import ScreenshotWarning from '@/components/QrCode/ScreenshotWarning';
+import QrCodeRecordList from '@/components/QrCode/QrCodeRecordList';
+import QrCodeStatusControl from '@/components/QrCode/QrCodeStatusControl';
 
 type QrMode = 'qr' | 'barcode';
 
 export default function Qrcode() {
-  const { user, insuranceAccount } = useStore();
+  const { user, insuranceAccount, qrCodeRecords, qrCodeState, updateQrCodeStatus } = useStore();
   const [mode, setMode] = useState<QrMode>('qr');
   const [countdown, setCountdown] = useState(60);
   const [copied, setCopied] = useState(false);
   const [showCode, setShowCode] = useState(true);
+  const [showScreenshotWarning, setShowScreenshotWarning] = useState(false);
+
+  const isQrCodeActive = qrCodeState.status === 'active';
+
+  const { resetScreenshotState } = useScreenshotDetection({
+    enabled: isQrCodeActive,
+    onScreenshot: () => {
+      setShowScreenshotWarning(true);
+    },
+  });
 
   const generateQrValue = useCallback(() => {
     const timestamp = Date.now();
@@ -21,8 +35,9 @@ export default function Qrcode() {
       accountId: insuranceAccount.id,
       timestamp,
       type: 'insurance_payment',
+      status: qrCodeState.status,
     });
-  }, [user, insuranceAccount]);
+  }, [user, insuranceAccount, qrCodeState.status]);
 
   const [qrValue, setQrValue] = useState(generateQrValue);
 
@@ -34,6 +49,11 @@ export default function Qrcode() {
   }, [qrValue]);
 
   useEffect(() => {
+    if (!isQrCodeActive) {
+      setCountdown(60);
+      return;
+    }
+
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
@@ -44,9 +64,10 @@ export default function Qrcode() {
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [generateQrValue]);
+  }, [generateQrValue, isQrCodeActive]);
 
   const handleRefresh = () => {
+    if (!isQrCodeActive) return;
     setQrValue(generateQrValue());
     setCountdown(60);
   };
@@ -57,14 +78,107 @@ export default function Qrcode() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleCloseScreenshotWarning = () => {
+    setShowScreenshotWarning(false);
+    resetScreenshotState();
+  };
+
+  const handleSuspendQrCode = (reason: string) => {
+    updateQrCodeStatus('suspended', reason);
+  };
+
+  const handleActivateQrCode = () => {
+    updateQrCodeStatus('active');
+  };
+
+  const handleReportLost = () => {
+    updateQrCodeStatus('lost', '挂失冻结');
+  };
+
   const usageTips = [
     { id: 1, title: '医保支付', desc: '在定点医院、药店出示此码即可支付' },
     { id: 2, title: '身份凭证', desc: '可作为医保业务办理的身份凭证' },
     { id: 3, title: '就诊登记', desc: '挂号、就诊、取药时出示即可' },
   ];
 
+  const renderQrCodeContent = () => {
+    if (!isQrCodeActive) {
+      return (
+        <div className="bg-gray-100 rounded-xl sm:rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gray-200 flex items-center justify-center mb-4">
+            <Shield size={32} className="text-gray-400 sm:w-10 sm:h-10" />
+          </div>
+          <h3 className="text-base sm:text-lg font-bold text-gray-700 mb-2">
+            {qrCodeState.status === 'suspended' ? '二维码已暂停' : '二维码已挂失'}
+          </h3>
+          <p className="text-gray-500 text-xs sm:text-sm text-center mb-4">
+            {qrCodeState.status === 'suspended'
+              ? '您已暂停使用医保电子凭证'
+              : '您的医保电子凭证已挂失冻结'}
+          </p>
+          <p className="text-gray-400 text-xs text-center">
+            如需使用，请点击下方"恢复使用"按钮
+          </p>
+        </div>
+      );
+    }
+
+    if (!showCode) {
+      return (
+        <div className="bg-white/10 backdrop-blur rounded-xl sm:rounded-2xl p-8 sm:p-12 flex flex-col items-center justify-center">
+          <EyeOff size={36} className="sm:w-12 sm:h-12 text-white/50 mb-3 sm:mb-4" />
+          <p className="text-white/70 text-center text-sm">点击上方眼睛图标查看二维码</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 flex flex-col items-center">
+        {mode === 'qr' ? (
+          <QRCodeCanvas
+            value={qrValue}
+            size={200}
+            level="H"
+            includeMargin={false}
+            fgColor="#1A73E8"
+          />
+        ) : (
+          <div className="w-full h-28 sm:h-32 bg-gray-900 rounded-xl flex items-center justify-center px-3 sm:px-4">
+            <div className="flex gap-0.5 h-20 sm:h-24 items-end">
+              {barcodeBars.map((bar, i) => (
+                <div
+                  key={i}
+                  className="bg-white"
+                  style={{
+                    width: `${bar.width}px`,
+                    height: `${bar.height}%`,
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+        
+        <div className="flex items-center gap-2 mt-3 sm:mt-4 text-gray-500">
+          <Clock size={12} className="sm:w-[14px] sm:h-[14px]" />
+          <span className="text-xs sm:text-sm">
+            码将在 <span className="text-insurance-blue-600 font-bold">{countdown}s</span> 后刷新
+          </span>
+        </div>
+
+        <button
+          onClick={handleRefresh}
+          className="mt-2 sm:mt-3 flex items-center gap-1 text-insurance-blue-500 hover:text-insurance-blue-600 text-xs sm:text-sm font-medium transition-colors"
+        >
+          <RefreshCw size={12} className="sm:w-[14px] sm:h-[14px]" />
+          立即刷新
+        </button>
+      </div>
+    );
+  };
+
   return (
-    <div className="max-w-lg mx-auto space-y-4 sm:space-y-6 px-2 sm:px-0">
+    <div className="max-w-lg mx-auto space-y-4 sm:space-y-6 px-2 sm:px-0 pb-8">
       <div className="text-center mb-6 sm:mb-8">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">医保电子凭证</h1>
         <p className="text-gray-500 text-sm">刷码即可享受医保服务</p>
@@ -87,83 +201,43 @@ export default function Qrcode() {
             </div>
             <button
               onClick={() => setShowCode(!showCode)}
-              className="p-2 bg-white/10 hover:bg-white/20 rounded-xl transition-colors"
+              disabled={!isQrCodeActive}
+              className={`p-2 rounded-xl transition-colors ${
+                isQrCodeActive
+                  ? 'bg-white/10 hover:bg-white/20'
+                  : 'bg-white/5 cursor-not-allowed opacity-50'
+              }`}
             >
               {showCode ? <Eye size={18} className="sm:w-5 sm:h-5" /> : <EyeOff size={18} className="sm:w-5 sm:h-5" />}
             </button>
           </div>
 
-          <div className="flex justify-center mb-4">
-            <div className="flex bg-white/10 rounded-xl p-1">
-              <button
-                onClick={() => setMode('qr')}
-                className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-                  mode === 'qr' ? 'bg-white text-insurance-blue-600' : 'text-white/80'
-                }`}
-              >
-                <QrCode size={16} className="sm:w-[18px] sm:h-[18px]" />
-                二维码
-              </button>
-              <button
-                onClick={() => setMode('barcode')}
-                className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-                  mode === 'barcode' ? 'bg-white text-insurance-blue-600' : 'text-white/80'
-                }`}
-              >
-                <Barcode size={16} className="sm:w-[18px] sm:h-[18px]" />
-                条形码
-              </button>
-            </div>
-          </div>
-
-          {showCode ? (
-            <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 flex flex-col items-center">
-              {mode === 'qr' ? (
-                <QRCodeCanvas
-                  value={qrValue}
-                  size={200}
-                  level="H"
-                  includeMargin={false}
-                  fgColor="#1A73E8"
-                />
-              ) : (
-                <div className="w-full h-28 sm:h-32 bg-gray-900 rounded-xl flex items-center justify-center px-3 sm:px-4">
-                  <div className="flex gap-0.5 h-20 sm:h-24 items-end">
-                    {barcodeBars.map((bar, i) => (
-                      <div
-                        key={i}
-                        className="bg-white"
-                        style={{
-                          width: `${bar.width}px`,
-                          height: `${bar.height}%`,
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              <div className="flex items-center gap-2 mt-3 sm:mt-4 text-gray-500">
-                <Clock size={12} className="sm:w-[14px] sm:h-[14px]" />
-                <span className="text-xs sm:text-sm">
-                  码将在 <span className="text-insurance-blue-600 font-bold">{countdown}s</span> 后刷新
-                </span>
+          {isQrCodeActive && (
+            <div className="flex justify-center mb-4">
+              <div className="flex bg-white/10 rounded-xl p-1">
+                <button
+                  onClick={() => setMode('qr')}
+                  className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                    mode === 'qr' ? 'bg-white text-insurance-blue-600' : 'text-white/80'
+                  }`}
+                >
+                  <QrCode size={16} className="sm:w-[18px] sm:h-[18px]" />
+                  二维码
+                </button>
+                <button
+                  onClick={() => setMode('barcode')}
+                  className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                    mode === 'barcode' ? 'bg-white text-insurance-blue-600' : 'text-white/80'
+                  }`}
+                >
+                  <Barcode size={16} className="sm:w-[18px] sm:h-[18px]" />
+                  条形码
+                </button>
               </div>
-
-              <button
-                onClick={handleRefresh}
-                className="mt-2 sm:mt-3 flex items-center gap-1 text-insurance-blue-500 hover:text-insurance-blue-600 text-xs sm:text-sm font-medium transition-colors"
-              >
-                <RefreshCw size={12} className="sm:w-[14px] sm:h-[14px]" />
-                立即刷新
-              </button>
-            </div>
-          ) : (
-            <div className="bg-white/10 backdrop-blur rounded-xl sm:rounded-2xl p-8 sm:p-12 flex flex-col items-center justify-center">
-              <EyeOff size={36} className="sm:w-12 sm:h-12 text-white/50 mb-3 sm:mb-4" />
-              <p className="text-white/70 text-center text-sm">点击上方眼睛图标查看二维码</p>
             </div>
           )}
+
+          {renderQrCodeContent()}
 
           <div className="mt-3 sm:mt-4 flex items-center justify-center gap-2 sm:gap-4 text-xs sm:text-sm">
             <div className="flex items-center gap-2">
@@ -180,6 +254,15 @@ export default function Qrcode() {
         </div>
       </div>
 
+      <QrCodeStatusControl
+        status={qrCodeState.status}
+        suspendTime={qrCodeState.suspendTime}
+        suspendReason={qrCodeState.suspendReason}
+        onSuspend={handleSuspendQrCode}
+        onActivate={handleActivateQrCode}
+        onReportLost={handleReportLost}
+      />
+
       <div className="card p-4">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-xl bg-insurance-orange-50 flex items-center justify-center flex-shrink-0">
@@ -192,6 +275,14 @@ export default function Qrcode() {
             </p>
           </div>
         </div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <History size={18} className="text-insurance-blue-500" />
+          <h3 className="font-bold text-gray-900">刷码记录</h3>
+        </div>
+        <QrCodeRecordList records={qrCodeRecords} maxVisible={3} />
       </div>
 
       <div className="space-y-4">
@@ -217,7 +308,10 @@ export default function Qrcode() {
       </div>
 
       <div className="card p-6 bg-gradient-to-br from-insurance-blue-50 to-insurance-green-50">
-        <h4 className="font-bold text-gray-900 mb-4">激活信息</h4>
+        <div className="flex items-center gap-2 mb-4">
+          <Settings size={18} className="text-insurance-blue-500" />
+          <h4 className="font-bold text-gray-900">激活信息</h4>
+        </div>
         <div className="space-y-3 text-sm">
           <div className="flex justify-between">
             <span className="text-gray-500">首次激活时间</span>
@@ -225,11 +319,11 @@ export default function Qrcode() {
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">累计使用次数</span>
-            <span className="text-gray-900 font-medium">128 次</span>
+            <span className="text-gray-900 font-medium">{qrCodeState.totalScanCount} 次</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">最近使用</span>
-            <span className="text-gray-900 font-medium">2026-05-20 14:30:00</span>
+            <span className="text-gray-900 font-medium">{qrCodeState.lastRefreshTime}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">使用城市</span>
@@ -237,6 +331,12 @@ export default function Qrcode() {
           </div>
         </div>
       </div>
+
+      <ScreenshotWarning
+        visible={showScreenshotWarning}
+        onClose={handleCloseScreenshotWarning}
+        autoCloseDelay={5000}
+      />
     </div>
   );
 }

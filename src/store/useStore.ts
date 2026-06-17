@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import type { User, InsuranceAccount, Transaction, PaymentOrder, ServiceApplication, InsuranceService } from '@/types';
-import { mockUser, mockInsuranceAccount, mockTransactions, mockPaymentOrders, mockServiceApplications, mockInsuranceServices, mockNotifications, mockInsurancePolicies } from '@/data/mockData';
+import type { User, InsuranceAccount, Transaction, PaymentOrder, ServiceApplication, InsuranceService, QrCodeRecord, QrCodeState, QrCodeStatus } from '@/types';
+import { mockUser, mockInsuranceAccount, mockTransactions, mockPaymentOrders, mockServiceApplications, mockInsuranceServices, mockNotifications, mockInsurancePolicies, mockQrCodeRecords, mockQrCodeState } from '@/data/mockData';
 import { getStorage, setStorage, clearStorage } from '@/utils/storage';
 
 interface StoreState {
@@ -12,6 +12,8 @@ interface StoreState {
   insuranceServices: InsuranceService[];
   notifications: Notification[];
   insurancePolicies: InsurancePolicy[];
+  qrCodeRecords: QrCodeRecord[];
+  qrCodeState: QrCodeState;
   setUser: (user: User) => void;
   updateUser: (updates: Partial<User>) => void;
   updateInsuranceAccount: (account: Partial<InsuranceAccount>) => void;
@@ -20,6 +22,8 @@ interface StoreState {
   addServiceApplication: (application: ServiceApplication) => void;
   updateServiceApplication: (id: string, updates: Partial<ServiceApplication>) => void;
   markNotificationRead: (id: string) => void;
+  updateQrCodeStatus: (status: QrCodeStatus, reason?: string) => void;
+  addQrCodeRecord: (record: QrCodeRecord) => void;
   resetToMockData: () => void;
   logout: () => void;
 }
@@ -53,6 +57,8 @@ const STORAGE_KEYS = {
   SERVICES: 'insurance_services',
   NOTIFICATIONS: 'insurance_notifications',
   POLICIES: 'insurance_policies',
+  QR_CODE_RECORDS: 'insurance_qr_code_records',
+  QR_CODE_STATE: 'insurance_qr_code_state',
 };
 
 export const useStore = create<StoreState>((set, get) => ({
@@ -64,6 +70,8 @@ export const useStore = create<StoreState>((set, get) => ({
   insuranceServices: getStorage<InsuranceService[]>(STORAGE_KEYS.SERVICES, mockInsuranceServices),
   notifications: getStorage<Notification[]>(STORAGE_KEYS.NOTIFICATIONS, mockNotifications),
   insurancePolicies: getStorage<InsurancePolicy[]>(STORAGE_KEYS.POLICIES, mockInsurancePolicies),
+  qrCodeRecords: getStorage<QrCodeRecord[]>(STORAGE_KEYS.QR_CODE_RECORDS, mockQrCodeRecords),
+  qrCodeState: getStorage<QrCodeState>(STORAGE_KEYS.QR_CODE_STATE, mockQrCodeState),
 
   setUser: (user) => {
     set({ user });
@@ -123,6 +131,25 @@ export const useStore = create<StoreState>((set, get) => ({
     setStorage(STORAGE_KEYS.NOTIFICATIONS, updated);
   },
 
+  updateQrCodeStatus: (status, reason) => {
+    const { qrCodeState } = get();
+    const updated: QrCodeState = {
+      ...qrCodeState,
+      status,
+      suspendReason: reason,
+      suspendTime: status !== 'active' ? new Date().toISOString() : undefined,
+    };
+    set({ qrCodeState: updated });
+    setStorage(STORAGE_KEYS.QR_CODE_STATE, updated);
+  },
+
+  addQrCodeRecord: (record) => {
+    const { qrCodeRecords } = get();
+    const updated = [record, ...qrCodeRecords];
+    set({ qrCodeRecords: updated });
+    setStorage(STORAGE_KEYS.QR_CODE_RECORDS, updated);
+  },
+
   resetToMockData: () => {
     set({
       user: mockUser,
@@ -133,6 +160,8 @@ export const useStore = create<StoreState>((set, get) => ({
       insuranceServices: mockInsuranceServices,
       notifications: mockNotifications,
       insurancePolicies: mockInsurancePolicies,
+      qrCodeRecords: mockQrCodeRecords,
+      qrCodeState: mockQrCodeState,
     });
     setStorage(STORAGE_KEYS.USER, mockUser);
     setStorage(STORAGE_KEYS.ACCOUNT, mockInsuranceAccount);
@@ -142,6 +171,8 @@ export const useStore = create<StoreState>((set, get) => ({
     setStorage(STORAGE_KEYS.SERVICES, mockInsuranceServices);
     setStorage(STORAGE_KEYS.NOTIFICATIONS, mockNotifications);
     setStorage(STORAGE_KEYS.POLICIES, mockInsurancePolicies);
+    setStorage(STORAGE_KEYS.QR_CODE_RECORDS, mockQrCodeRecords);
+    setStorage(STORAGE_KEYS.QR_CODE_STATE, mockQrCodeState);
   },
 
   logout: () => {
@@ -155,6 +186,8 @@ export const useStore = create<StoreState>((set, get) => ({
       insuranceServices: mockInsuranceServices,
       notifications: mockNotifications,
       insurancePolicies: mockInsurancePolicies,
+      qrCodeRecords: mockQrCodeRecords,
+      qrCodeState: mockQrCodeState,
     });
   },
 }));
