@@ -79,3 +79,14 @@ export interface QuickAction {
 }
 
 export type StatusType = PaymentOrder['status'] | ServiceApplication['status'];
+
+export interface CodeScanRecord {
+  id: string;
+  accountId: string;
+  merchant: string;
+  amount: number;
+  type: 'payment' | 'query' | 'verification';
+  status: 'success' | 'failed';
+  scanTime: string;
+  location?: string;
+}
