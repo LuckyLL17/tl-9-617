@@ -183,99 +183,58 @@ export default function SuspendDialog({
     );
   };
 
-  const renderConfirmStep = () => {
-    const getConfirmInfo = () => {
+  const getConfirmButtons = () => {
+    if (step !== 'confirm' || !selectedAction) return null;
+
+    const getButtonInfo = () => {
       switch (selectedAction) {
         case 'suspend':
           return {
-            title: '确认暂停使用？',
-            desc: '暂停后，医保二维码将无法使用，您可以随时恢复。',
-            iconColor: 'bg-insurance-orange-100',
-            iconTextColor: 'text-insurance-orange-500',
             buttonText: '确认暂停',
             buttonColor: 'bg-insurance-orange-500 hover:bg-insurance-orange-600',
           };
         case 'lost':
           return {
-            title: '确认挂失冻结？',
-            desc: '挂失后，医保二维码将立即冻结，无法进行任何支付操作。请及时联系医保服务热线 12393。',
-            iconColor: 'bg-red-100',
-            iconTextColor: 'text-red-500',
             buttonText: '确认挂失',
             buttonColor: 'bg-red-500 hover:bg-red-600',
           };
         case 'activate':
           return {
-            title: '确认恢复使用？',
-            desc: '恢复后，医保二维码将可以正常使用。',
-            iconColor: 'bg-insurance-green-100',
-            iconTextColor: 'text-insurance-green-500',
             buttonText: '确认恢复',
             buttonColor: 'bg-insurance-green-500 hover:bg-insurance-green-600',
           };
         default:
           return {
-            title: '',
-            desc: '',
-            iconColor: '',
-            iconTextColor: '',
             buttonText: '',
             buttonColor: '',
           };
       }
     };
 
-    const info = getConfirmInfo();
+    const info = getButtonInfo();
 
     return (
-      <div className="space-y-5">
-        <div className="flex flex-col items-center text-center">
-          <div
-            className={cn(
-              'w-16 h-16 rounded-2xl flex items-center justify-center mb-4',
-              info.iconColor
-            )}
-          >
-            <AlertTriangle size={32} className={info.iconTextColor} />
-          </div>
-          <h3 className="text-lg font-bold text-gray-900 mb-2">{info.title}</h3>
-          <p className="text-sm text-gray-500">{info.desc}</p>
-        </div>
-
-        {selectedAction === 'lost' && (
-          <div className="bg-red-50 rounded-xl p-4">
-            <div className="flex items-start gap-3">
-              <Phone size={18} className="text-red-500 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-medium text-red-700 text-sm">紧急联系</p>
-                <p className="text-red-600 text-xs mt-1">
-                  如遇紧急情况，请立即拨打医保服务热线 12393
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="flex gap-3 pt-2">
-          <button
-            onClick={handleBack}
-            className="flex-1 py-3 px-4 border border-gray-200 rounded-xl font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            返回
-          </button>
-          <button
-            onClick={handleConfirm}
-            className={cn(
-              'flex-1 py-3 px-4 rounded-xl font-medium text-white transition-colors',
-              info.buttonColor
-            )}
-          >
-            {info.buttonText}
-          </button>
-        </div>
+      <div className="flex gap-3">
+        <button
+          onClick={handleBack}
+          className="flex-1 py-3 px-4 border border-gray-200 rounded-xl font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+        >
+          返回
+        </button>
+        <button
+          onClick={handleConfirm}
+          className={cn(
+            'flex-1 py-3 px-4 rounded-xl font-medium text-white transition-colors',
+            info.buttonColor
+          )}
+        >
+          {info.buttonText}
+        </button>
       </div>
     );
   };
+
+  const showFooter = step === 'reason' || step === 'confirm';
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
@@ -283,8 +242,8 @@ export default function SuspendDialog({
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={handleClose}
       />
-      <div className="relative w-full sm:max-w-md bg-white sm:rounded-2xl rounded-t-3xl max-h-[85vh] overflow-hidden">
-        <div className="sticky top-0 bg-white z-10 px-4 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+      <div className="relative w-full sm:max-w-md bg-white sm:rounded-2xl rounded-t-3xl max-h-[85vh] flex flex-col overflow-hidden">
+        <div className="flex-shrink-0 px-4 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-lg font-bold text-gray-900">
             {step === 'action' && '二维码管理'}
             {step === 'reason' && (selectedAction === 'suspend' ? '暂停使用' : '挂失冻结')}
@@ -298,20 +257,72 @@ export default function SuspendDialog({
           </button>
         </div>
 
-        <div className="px-4 sm:px-6 py-5 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5">
           {step === 'action' && renderActionStep()}
           {step === 'reason' && renderReasonStep()}
-          {step === 'confirm' && renderConfirmStep()}
+          {step === 'confirm' && (
+            <div className="space-y-5">
+              <div className="flex flex-col items-center text-center">
+                <div
+                  className={cn(
+                    'w-16 h-16 rounded-2xl flex items-center justify-center mb-4',
+                    selectedAction === 'suspend' && 'bg-insurance-orange-100',
+                    selectedAction === 'lost' && 'bg-red-100',
+                    selectedAction === 'activate' && 'bg-insurance-green-100'
+                  )}
+                >
+                  <AlertTriangle
+                    size={32}
+                    className={cn(
+                      selectedAction === 'suspend' && 'text-insurance-orange-500',
+                      selectedAction === 'lost' && 'text-red-500',
+                      selectedAction === 'activate' && 'text-insurance-green-500'
+                    )}
+                  />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">
+                  {selectedAction === 'suspend' && '确认暂停使用？'}
+                  {selectedAction === 'lost' && '确认挂失冻结？'}
+                  {selectedAction === 'activate' && '确认恢复使用？'}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {selectedAction === 'suspend' &&
+                    '暂停后，医保二维码将无法使用，您可以随时恢复。'}
+                  {selectedAction === 'lost' &&
+                    '挂失后，医保二维码将立即冻结，无法进行任何支付操作。请及时联系医保服务热线 12393。'}
+                  {selectedAction === 'activate' &&
+                    '恢复后，医保二维码将可以正常使用。'}
+                </p>
+              </div>
+
+              {selectedAction === 'lost' && (
+                <div className="bg-red-50 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <Phone size={18} className="text-red-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-red-700 text-sm">紧急联系</p>
+                      <p className="text-red-600 text-xs mt-1">
+                        如遇紧急情况，请立即拨打医保服务热线 12393
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {step === 'reason' && (
-          <div className="px-4 sm:px-6 py-4 border-t border-gray-100">
-            <button
-              onClick={handleBack}
-              className="w-full py-3 px-4 border border-gray-200 rounded-xl font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              返回
-            </button>
+        {showFooter && (
+          <div className="flex-shrink-0 px-4 sm:px-6 py-4 border-t border-gray-100 bg-white">
+            {step === 'reason' && (
+              <button
+                onClick={handleBack}
+                className="w-full py-3 px-4 border border-gray-200 rounded-xl font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                返回
+              </button>
+            )}
+            {step === 'confirm' && getConfirmButtons()}
           </div>
         )}
       </div>
