@@ -1,16 +1,22 @@
-import { PauseCircle, Ban, Shield } from 'lucide-react';
-import type { QrCodeStatus } from '@/types';
+import { PauseCircle, Ban, Shield, Phone, AlertTriangle, Clock } from 'lucide-react';
+import type { QrCodeStatus, User } from '@/types';
 import { getQrStatusText, getQrStatusColor } from '@/utils/format';
 import { cn } from '@/lib/utils';
 
 interface QrCodeStatusDisplayProps {
   status: QrCodeStatus;
+  user: User;
   onActivate: () => void;
+  suspendReason?: string;
+  suspendTime?: string;
 }
 
 export default function QrCodeStatusDisplay({
   status,
+  user,
   onActivate,
+  suspendReason,
+  suspendTime,
 }: QrCodeStatusDisplayProps) {
   const getStatusConfig = () => {
     switch (status) {
@@ -21,7 +27,9 @@ export default function QrCodeStatusDisplay({
           description: '您已暂停使用医保二维码，点击下方按钮恢复使用。',
           buttonText: '恢复使用',
           buttonClass: 'bg-insurance-orange-500 hover:bg-insurance-orange-600',
-          bgClass: 'from-insurance-orange-600 to-insurance-orange-700',
+          gradientFrom: 'from-insurance-orange-500',
+          gradientTo: 'to-insurance-orange-600',
+          showReason: true,
         };
       case 'lost':
         return {
@@ -30,7 +38,10 @@ export default function QrCodeStatusDisplay({
           description: '您的医保二维码已挂失冻结，无法进行支付操作。如需恢复请先解除挂失。',
           buttonText: '解除挂失',
           buttonClass: 'bg-red-500 hover:bg-red-600',
-          bgClass: 'from-red-600 to-red-700',
+          gradientFrom: 'from-red-500',
+          gradientTo: 'to-red-600',
+          showReason: true,
+          showEmergency: true,
         };
       default:
         return {
@@ -39,7 +50,10 @@ export default function QrCodeStatusDisplay({
           description: '',
           buttonText: '',
           buttonClass: '',
-          bgClass: '',
+          gradientFrom: '',
+          gradientTo: '',
+          showReason: false,
+          showEmergency: false,
         };
     }
   };
@@ -47,12 +61,16 @@ export default function QrCodeStatusDisplay({
   const config = getStatusConfig();
   const IconComponent = config.icon;
 
+  if (status === 'active') {
+    return null;
+  }
+
   return (
     <div
       className={cn(
         'gradient-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 text-white relative overflow-hidden',
-        status === 'suspended' && 'from-insurance-orange-500 to-insurance-orange-600',
-        status === 'lost' && 'from-red-500 to-red-600'
+        config.gradientFrom,
+        config.gradientTo
       )}
     >
       <div className="absolute top-0 right-0 w-24 h-24 sm:w-32 sm:h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
@@ -66,7 +84,7 @@ export default function QrCodeStatusDisplay({
             </div>
             <div>
               <p className="text-white/70 text-xs sm:text-sm">参保人</p>
-              <p className="font-bold text-base sm:text-lg">张三</p>
+              <p className="font-bold text-base sm:text-lg">{user.name}</p>
             </div>
           </div>
           <span
@@ -86,9 +104,24 @@ export default function QrCodeStatusDisplay({
           <h3 className="text-lg sm:text-xl font-bold text-white mb-2 text-center">
             {config.title}
           </h3>
-          <p className="text-white/70 text-sm text-center mb-6 max-w-xs">
+          <p className="text-white/70 text-sm text-center mb-4 max-w-xs">
             {config.description}
           </p>
+
+          {config.showReason && suspendReason && (
+            <div className="flex items-center gap-2 mb-2 text-white/80 text-xs">
+              <AlertTriangle size={14} />
+              <span>原因：{suspendReason}</span>
+            </div>
+          )}
+
+          {suspendTime && (
+            <div className="flex items-center gap-2 mb-6 text-white/60 text-xs">
+              <Clock size={14} />
+              <span>操作时间：{suspendTime}</span>
+            </div>
+          )}
+
           <button
             onClick={onActivate}
             className={cn(
@@ -99,6 +132,21 @@ export default function QrCodeStatusDisplay({
             {config.buttonText}
           </button>
         </div>
+
+        {config.showEmergency && (
+          <div className="mt-4 bg-white/10 backdrop-blur rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <Phone size={18} className="text-white flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-white text-sm">紧急联系</p>
+                <p className="text-white/70 text-xs mt-1">
+                  如遇紧急情况，请立即拨打医保服务热线
+                  <span className="font-bold text-white ml-1">12393</span>
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="mt-4 flex items-center justify-center gap-2 text-xs sm:text-sm text-white/70">
           <span>如有疑问请拨打医保服务热线</span>

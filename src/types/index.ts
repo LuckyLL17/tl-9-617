@@ -92,3 +92,9 @@ export interface ScanRecord {
 }
 
 export type QrCodeStatus = 'active' | 'suspended' | 'lost';
+
+export interface QrCodeStatusInfo {
+  status: QrCodeStatus;
+  reason?: string;
+  operateTime?: string;
+}

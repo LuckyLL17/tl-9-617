@@ -20,21 +20,29 @@ import ScanHistory from '@/components/Qrcode/ScanHistory';
 import SuspendDialog from '@/components/Qrcode/SuspendDialog';
 import ScreenshotWarning from '@/components/Qrcode/ScreenshotWarning';
 import QrCodeStatusDisplay from '@/components/Qrcode/QrCodeStatusDisplay';
-import { getQrStatusText, getQrStatusColor } from '@/utils/format';
+import { getQrStatusText, getQrStatusColor, formatDate } from '@/utils/format';
 import { cn } from '@/lib/utils';
 
 type QrMode = 'qr' | 'barcode';
 
 export default function Qrcode() {
-  const { user, insuranceAccount, scanRecords, qrCodeStatus, setQrCodeStatus } = useStore();
+  const {
+    user,
+    insuranceAccount,
+    scanRecords,
+    qrCodeStatus,
+    qrCodeStatusInfo,
+    setQrCodeStatus,
+  } = useStore();
   const [mode, setMode] = useState<QrMode>('qr');
   const [countdown, setCountdown] = useState(60);
   const [copied, setCopied] = useState(false);
   const [showCode, setShowCode] = useState(true);
   const [showSuspendDialog, setShowSuspendDialog] = useState(false);
 
-  const { showWarning, dismissWarning } = useScreenshotDetection({
+  const { showWarning, dismissWarning, detectionCount } = useScreenshotDetection({
     enabled: qrCodeStatus === 'active',
+    warningDuration: 6000,
   });
 
   const generateQrValue = useCallback(() => {
@@ -84,8 +92,8 @@ export default function Qrcode() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSuspendConfirm = (status: typeof qrCodeStatus) => {
-    setQrCodeStatus(status);
+  const handleSuspendConfirm = (status: typeof qrCodeStatus, reason?: string) => {
+    setQrCodeStatus(status, reason);
   };
 
   const handleActivate = () => {
@@ -171,7 +179,11 @@ export default function Qrcode() {
         </div>
 
         {showCode ? (
-          <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 flex flex-col items-center">
+          <div
+            data-qr-code="true"
+            className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 flex flex-col items-center select-none"
+            style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+          >
             {mode === 'qr' ? (
               <QRCodeCanvas
                 value={qrValue}
@@ -267,7 +279,14 @@ export default function Qrcode() {
       ) : (
         <QrCodeStatusDisplay
           status={qrCodeStatus}
+          user={user}
           onActivate={handleActivate}
+          suspendReason={qrCodeStatusInfo.reason}
+          suspendTime={
+            qrCodeStatusInfo.operateTime
+              ? formatDate(qrCodeStatusInfo.operateTime, 'full')
+              : undefined
+          }
         />
       )}
 
@@ -277,8 +296,15 @@ export default function Qrcode() {
             <div className="w-10 h-10 rounded-xl bg-insurance-orange-50 flex items-center justify-center flex-shrink-0">
               <AlertTriangle size={20} className="text-insurance-orange-500" />
             </div>
-            <div>
-              <h4 className="font-medium text-gray-900 mb-1">安全提示</h4>
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-1">
+                <h4 className="font-medium text-gray-900">安全提示</h4>
+                {detectionCount > 0 && (
+                  <span className="text-xs text-insurance-orange-500 font-medium">
+                    已拦截 {detectionCount} 次风险操作
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-gray-500">
                 请勿将二维码截图或分享给他人，每次使用后请及时关闭页面。如发现异常请立即联系医保服务热线 12393。
               </p>
