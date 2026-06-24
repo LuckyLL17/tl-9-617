@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import type { User, InsuranceAccount, Transaction, PaymentOrder, ServiceApplication, InsuranceService } from '@/types';
-import { mockUser, mockInsuranceAccount, mockTransactions, mockPaymentOrders, mockServiceApplications, mockInsuranceServices, mockNotifications, mockInsurancePolicies } from '@/data/mockData';
+import type { User, InsuranceAccount, Transaction, PaymentOrder, ServiceApplication, InsuranceService, ScanRecord, QrCodeStatus, QrCodeStatusInfo } from '@/types';
+import { mockUser, mockInsuranceAccount, mockTransactions, mockPaymentOrders, mockServiceApplications, mockInsuranceServices, mockNotifications, mockInsurancePolicies, mockScanRecords } from '@/data/mockData';
 import { getStorage, setStorage, clearStorage } from '@/utils/storage';
 
 interface StoreState {
@@ -12,6 +12,9 @@ interface StoreState {
   insuranceServices: InsuranceService[];
   notifications: Notification[];
   insurancePolicies: InsurancePolicy[];
+  scanRecords: ScanRecord[];
+  qrCodeStatus: QrCodeStatus;
+  qrCodeStatusInfo: QrCodeStatusInfo;
   setUser: (user: User) => void;
   updateUser: (updates: Partial<User>) => void;
   updateInsuranceAccount: (account: Partial<InsuranceAccount>) => void;
@@ -20,6 +23,8 @@ interface StoreState {
   addServiceApplication: (application: ServiceApplication) => void;
   updateServiceApplication: (id: string, updates: Partial<ServiceApplication>) => void;
   markNotificationRead: (id: string) => void;
+  addScanRecord: (record: ScanRecord) => void;
+  setQrCodeStatus: (status: QrCodeStatus, reason?: string) => void;
   resetToMockData: () => void;
   logout: () => void;
 }
@@ -53,6 +58,13 @@ const STORAGE_KEYS = {
   SERVICES: 'insurance_services',
   NOTIFICATIONS: 'insurance_notifications',
   POLICIES: 'insurance_policies',
+  SCAN_RECORDS: 'insurance_scan_records',
+  QR_CODE_STATUS: 'insurance_qr_code_status',
+  QR_CODE_STATUS_INFO: 'insurance_qr_code_status_info',
+};
+
+const defaultQrCodeStatusInfo: QrCodeStatusInfo = {
+  status: 'active',
 };
 
 export const useStore = create<StoreState>((set, get) => ({
@@ -64,6 +76,9 @@ export const useStore = create<StoreState>((set, get) => ({
   insuranceServices: getStorage<InsuranceService[]>(STORAGE_KEYS.SERVICES, mockInsuranceServices),
   notifications: getStorage<Notification[]>(STORAGE_KEYS.NOTIFICATIONS, mockNotifications),
   insurancePolicies: getStorage<InsurancePolicy[]>(STORAGE_KEYS.POLICIES, mockInsurancePolicies),
+  scanRecords: getStorage<ScanRecord[]>(STORAGE_KEYS.SCAN_RECORDS, mockScanRecords),
+  qrCodeStatus: getStorage<QrCodeStatus>(STORAGE_KEYS.QR_CODE_STATUS, 'active'),
+  qrCodeStatusInfo: getStorage<QrCodeStatusInfo>(STORAGE_KEYS.QR_CODE_STATUS_INFO, defaultQrCodeStatusInfo),
 
   setUser: (user) => {
     set({ user });
@@ -123,6 +138,24 @@ export const useStore = create<StoreState>((set, get) => ({
     setStorage(STORAGE_KEYS.NOTIFICATIONS, updated);
   },
 
+  addScanRecord: (record) => {
+    const { scanRecords } = get();
+    const updated = [record, ...scanRecords];
+    set({ scanRecords: updated });
+    setStorage(STORAGE_KEYS.SCAN_RECORDS, updated);
+  },
+
+  setQrCodeStatus: (status, reason) => {
+    const statusInfo: QrCodeStatusInfo = {
+      status,
+      reason,
+      operateTime: status !== 'active' ? new Date().toISOString() : undefined,
+    };
+    set({ qrCodeStatus: status, qrCodeStatusInfo: statusInfo });
+    setStorage(STORAGE_KEYS.QR_CODE_STATUS, status);
+    setStorage(STORAGE_KEYS.QR_CODE_STATUS_INFO, statusInfo);
+  },
+
   resetToMockData: () => {
     set({
       user: mockUser,
@@ -133,6 +166,9 @@ export const useStore = create<StoreState>((set, get) => ({
       insuranceServices: mockInsuranceServices,
       notifications: mockNotifications,
       insurancePolicies: mockInsurancePolicies,
+      scanRecords: mockScanRecords,
+      qrCodeStatus: 'active',
+      qrCodeStatusInfo: defaultQrCodeStatusInfo,
     });
     setStorage(STORAGE_KEYS.USER, mockUser);
     setStorage(STORAGE_KEYS.ACCOUNT, mockInsuranceAccount);
@@ -142,6 +178,9 @@ export const useStore = create<StoreState>((set, get) => ({
     setStorage(STORAGE_KEYS.SERVICES, mockInsuranceServices);
     setStorage(STORAGE_KEYS.NOTIFICATIONS, mockNotifications);
     setStorage(STORAGE_KEYS.POLICIES, mockInsurancePolicies);
+    setStorage(STORAGE_KEYS.SCAN_RECORDS, mockScanRecords);
+    setStorage(STORAGE_KEYS.QR_CODE_STATUS, 'active');
+    setStorage(STORAGE_KEYS.QR_CODE_STATUS_INFO, defaultQrCodeStatusInfo);
   },
 
   logout: () => {
@@ -155,6 +194,9 @@ export const useStore = create<StoreState>((set, get) => ({
       insuranceServices: mockInsuranceServices,
       notifications: mockNotifications,
       insurancePolicies: mockInsurancePolicies,
+      scanRecords: mockScanRecords,
+      qrCodeStatus: 'active',
+      qrCodeStatusInfo: defaultQrCodeStatusInfo,
     });
   },
 }));
